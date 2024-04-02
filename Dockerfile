@@ -95,7 +95,7 @@ ARG ADD_ros_tutorials=1
 ARG ADD_grid_map=0
 
 # for a custom message example
-ARG ADD_custom_msgs=0
+ARG ADD_custom_msgs=1
 
 # sanity check:
 RUN echo "ADD_ros_tutorials = '$ADD_ros_tutorials'"
@@ -167,14 +167,27 @@ RUN if [[ "$ADD_grid_map" = "1" ]]; then                                        
 #   Note2: Use the same package name for both ROS1 and ROS2.
 #   See https://github.com/ros2/ros1_bridge/blob/master/doc/index.rst
 ######################################
+ADD ros1_ws /ros1_ws
+ADD ros2_ws /ros2_ws
+
 RUN if [[ "$ADD_custom_msgs" = "1" ]]; then                             \
-      git clone https://github.com/TommyChangUMD/custom_msgs.git;       \
       # Compile ROS1:                                                   \
-      cd /custom_msgs/custom_msgs_ros1;                                 \
+      cd /ros1_ws/src; \
+      git clone https://github.com/ros-geographic-info/geographic_info.git && \
+      git clone https://github.com/ros-geographic-info/unique_identifier.git &&               \
+      cd ..; \
       unset ROS_DISTRO;                                                 \
       time colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release;        \
       # Compile ROS2:                                                   \
-      cd /custom_msgs/custom_msgs_ros2;                                 \
+      apt-get -y install ros-humble-rclcpp; \
+      apt-get -y install ros-humble-std-msgs; \
+      apt-get -y install ros-humble-geometry-msgs; \
+      apt-get -y install ros-humble-sensor-msgs; \
+      apt-get -y install ros-humble-builtin-interfaces; \
+      apt-get -y install ros-humble-geographic-msgs; \
+      apt-get -y install ros-humble-rosidl-default-generators;   \
+     #  apt-get -y install ros-humble-rosidl-default-runtime; \
+      cd /ros2_ws;                                 \
       source /opt/ros/humble/setup.bash;                                \
       time colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release;        \
     fi
@@ -207,11 +220,11 @@ RUN                                                                             
       source /opt/ros/humble/setup.bash;                                        \
     fi;                                                                         \
     #                                                                           \
-    if [[ "$ADD_custom_msgs" = "1" ]]; then                                     \
+    if [[ "$ADD_custom_msgs" = "1" ]]; then \
       # Apply ROS1 package overlay                                              \
-      source /custom_msgs/custom_msgs_ros1/install/setup.bash;                  \
+      source /ros1_ws/install/setup.bash;                  \
       # Apply ROS2 package overlay                                              \
-      source /custom_msgs/custom_msgs_ros2/install/setup.bash;                  \
+      source /ros2_ws/install/local_setup.bash;                  \
     fi;                                                                         \
     #                                                                           \
     #-------------------------------------                                      \
@@ -268,3 +281,14 @@ RUN tar czf /ros-humble-ros1-bridge.tgz \
      --exclude '*/build/*' --exclude '*/src/*' /ros-humble-ros1-bridge 
 ENTRYPOINT []
 CMD cat /ros-humble-ros1-bridge.tgz; sync
+
+
+
+
+
+# RUN cd ros1_ws &&                     \
+#      unset ROS_DISTRO &&                                                  \
+#      rosdep update && \
+#      # apt-get install -y ros-noetic-geographic-info && \
+#      DEBIAN_FRONTEND=noninteractive rosdep install --from-paths src --ignore-src --rosdistro=noetic -r -y && \
+#      time colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release;        
